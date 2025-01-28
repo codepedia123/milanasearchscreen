@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- 1) Viewport Meta Tag to disable pinch-zoom -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Doctor Search Page</title>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js" type="text/javascript"></script>
+    <style>
+        /* 2) CSS touch-action to disable pinch and double-tap zoom */
+        body {
+            touch-action: none; /* Disable pinch-zoom gestures */
+            font-family: 'Raleway', sans-serif;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            color: #D8ABA2;
+        }
+
+        input[type="text"], select, textarea {
+            width: calc(100% - 40px);
+            padding: 12px;
+            border: 1px solid #D8ABA2;
+            background-color: #FDF5F4;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: 'Raleway', sans-serif;
+            color: #D8ABA2;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 12px 16px;
+            border: 1px solid #D8ABA2;
+            background-color: #FDF5F4;
+            font-size: 16px;
+            font-family: 'Poppins', sans-serif;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #D8ABA2;
+        }
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            width: calc(100% - 40px);
+        }
+        .toggle-switch label {
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .toggle-switch input[type="radio"] {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #D8ABA2;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-right: 5px;
+            position: relative;
+        }
+        .toggle-switch input[type="radio"]:checked::before {
+            content: '';
+            display: block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #D8ABA2;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .profile {
+            display: none;
+            align-items: center;
+            margin: 15px 0;
+            border-bottom: 1px solid #FDF5F4;
+            padding-bottom: 15px;
+            width: calc(100% - 40px);
+            cursor: pointer;
+        }
+        .profile img {
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            margin-right: 20px;
+        }
+        .profile .text-container {
+            display: flex;
+            flex-direction: column;
+        }
+        .profile .name {
+            font-weight: normal;
+            font-size: 16px;
+            color: #D8ABA2;
+        }
+        .profile .category {
+            font-weight: normal;
+            font-size: 15px;
+            background-color: #ffffff;
+            color: #777;
+            padding: 4px;
+            border-radius: 5px;
+            margin-top: 4px;
+        }
+        .profile .location {
+            font-weight: normal;
+            font-size: 14px;
+            color: #999;
+            margin-top: 4px;
+        }
+        #noResultsMessage {
+            font-size: 16px;
+            color: #777;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #jsonInput, #csvInput, #loadProfilesButton {
+            display: none; /* Hidden elements */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- JSON and CSV Inputs (Hidden) -->
+    <textarea id="jsonInput" placeholder="Enter profiles JSON" rows="5"></textarea>
+    <input type="text" id="csvInput" placeholder="Enter profile pictures CSV">
+
+    <!-- Load Profiles Button (Hidden) -->
+    <button id="loadProfilesButton" onclick="loadProfiles()">Load Profiles</button>
+
+    <!-- Toggle Switch for Search Type -->
+    <div class="toggle-switch">
+        <label>Search by:</label>
+        <label>
+            <input type="radio" name="searchType" value="expert" checked onchange="toggleSearchType()"> Name
+        </label>
+        <label>
+            <input type="radio" name="searchType" value="category" onchange="toggleSearchType()"> Category
+        </label>
+        <!-- New Radio Option for Location -->
+        <label>
+            <input type="radio" name="searchType" value="location" onchange="toggleSearchType()"> Location
+        </label>
+        <!-- New Radio Option for ALL -->
+        <label>
+            <input type="radio" name="searchType" value="all" onchange="toggleSearchType()"> All
+        </label>
+    </div>
+
+    <!-- Search Input (for Name search) -->
+    <input type="text" id="searchInput" placeholder="Search for Experts" oninput="filterProfiles()">
+
+    <!-- Category Select (Hidden initially) -->
+    <select id="categorySelect" onchange="filterProfiles()" style="display:none;"></select>
+
+    <!-- Location Select (Hidden initially) -->
+    <select id="locationSelect" onchange="filterProfiles()" style="display:none;"></select>
+
+    <!-- Message when no profiles are visible -->
+    <div id="noResultsMessage">Search Results will appear here.</div>
+
+    <!-- Sample Profiles -->
+    <div id="profile1" class="profile" data-id="1" onclick="sendProfileIdToThunkable(this)">
+        <img src="" alt="Profile 1">
+        <div class="text-container">
+            <span class="name">Jane Smith</span>
+            <span class="category">Neurology</span>
+            <span class="location">NY</span>
+        </div>
+    </div>
+    <div id="profile2" class="profile" data-id="2" onclick="sendProfileIdToThunkable(this)">
+        <img src="" alt="Profile 2">
+        <div class="text-container">
+            <span class="name"></span>
+            <span class="category"></span>
+            <span class="location"></span>
+        </div>
+    </div>
+    <div id="profile3" class="profile" data-id="3" onclick="sendProfileIdToThunkable(this)">
+        <img src="" alt="Profile 3">
+        <div class="text-container">
+            <span class="name"></span>
+            <span class="category"></span>
+            <span class="location"></span>
+        </div>
+    </div>
+    <!-- Additional profiles can be added in the same format -->
+
+    <script>
+        // 3) JavaScript to prevent default pinch/gesture behaviors
+        document.addEventListener('touchstart', function(event) {
+            if (event.touches.length > 1) {
+                event.preventDefault(); // Prevent multi-touch (pinch) zoom
+            }
+        }, { passive: false });
+
+        // Prevent zoom gestures (iOS)
+        document.addEventListener('gesturestart', function(event) {
+            event.preventDefault(); // Block pinch zoom on iOS
+        });
+
+        // Category options
+        const categories = [
+            "Caregiving (Doula, Midwife, Nanny)",
+            "Pre-Pregnancy and Conception Support",
+            "Child Development Guidance",
+            "Educational Support Services (Teacher, Tutor)",
+            "Health & Wellness Coaching (Nutrition, Dietician)",
+            "Holistic Lifestyle Guidance (Organic, Non-Toxic Products Support)",
+            "Lactation Consultation",
+            "Mental Health & Emotional Support (Therapist, Psychologist, Psychiatrist)",
+            "Physical Health and Rehabilitation (Personal Trainer, Physical Therapist, Chiropractor, Pelvic Floor Therapist)",
+            "Safety Education & Training (Car Seat Safety, Child Proofing)",
+            "Sleep Consulting",
+            "Other (note below)"
+        ];
+
+        // Location options (US States + INTERNATIONAL)
+        const locations = [
+            "AL","AK","AZ","AR","","CA","CO","CT","DE","DC","FL","GA","HI",
+            "ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS",
+            "MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR",
+            "PA","RI","SC","SD","TN","TX","UT","VT","VA","WV","WI","WY",
+            "INTERNATIONAL"
+        ];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            populateCategorySelect();
+            populateLocationSelect();
+        });
+
+        // Populate Category dropdown
+        function populateCategorySelect() {
+            const categorySelect = document.getElementById('categorySelect');
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.text = 'Select a Category';
+            categorySelect.add(defaultOption);
+
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.toLowerCase();
+                option.text = category;
+                categorySelect.add(option);
+            });
+        }
+
+        // Populate Location dropdown
+        function populateLocationSelect() {
+            const locationSelect = document.getElementById('locationSelect');
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.text = 'Select a Location';
+            locationSelect.add(defaultOption);
+
+            locations.forEach(loc => {
+                // If you want to skip empty entries in the array, you can do:
+                if (loc.trim() === '') return; 
+                
+                const option = document.createElement('option');
+                option.value = loc.toLowerCase();
+                option.text = loc;
+                locationSelect.add(option);
+            });
+        }
+
+        function toggleSearchType() {
+            const searchType = document.querySelector('input[name="searchType"]:checked').value;
+            const searchInput = document.getElementById('searchInput');
+            const categorySelect = document.getElementById('categorySelect');
+            const locationSelect = document.getElementById('locationSelect');
+
+            if (searchType === 'expert') {
+                // Show text input, hide category & location selects
+                searchInput.style.display = 'block';
+                searchInput.placeholder = 'Search for Experts';
+                categorySelect.style.display = 'none';
+                locationSelect.style.display = 'none';
+                categorySelect.value = '';
+                locationSelect.value = '';
+                searchInput.value = '';
+            } 
+            else if (searchType === 'category') {
+                // Hide text input, show category select, hide location select
+                searchInput.style.display = 'none';
+                categorySelect.style.display = 'block';
+                locationSelect.style.display = 'none';
+                categorySelect.value = '';
+                locationSelect.value = '';
+                searchInput.value = '';
+            } 
+            else if (searchType === 'location') {
+                // Hide text input, hide category select, show location select
+                searchInput.style.display = 'none';
+                categorySelect.style.display = 'none';
+                locationSelect.style.display = 'block';
+                categorySelect.value = '';
+                locationSelect.value = '';
+                searchInput.value = '';
+            }
+            else if (searchType === 'all') {
+                // Hide text input, hide category select, hide location select
+                searchInput.style.display = 'none';
+                categorySelect.style.display = 'none';
+                locationSelect.style.display = 'none';
+                categorySelect.value = '';
+                locationSelect.value = '';
+                searchInput.value = '';
+            }
+
+            filterProfiles(); // Update profiles display
+        }
+
+        function filterProfiles() {
+            const searchType = document.querySelector('input[name="searchType"]:checked').value;
+            const profiles = document.querySelectorAll('.profile');
+            let anyVisible = false;
+            let filterValue = '';
+
+            if (searchType === 'expert') {
+                // Filter by Name (text input)
+                filterValue = document.querySelector('#searchInput').value.toLowerCase();
+                profiles.forEach(profile => {
+                    const nameText = profile.querySelector('.name').textContent.toLowerCase();
+                    if (nameText.includes(filterValue) && filterValue !== '') {
+                        profile.style.display = 'flex';
+                        anyVisible = true;
+                    } else {
+                        profile.style.display = 'none';
+                    }
+                });
+            } 
+            else if (searchType === 'category') {
+                // Filter by Category (dropdown)
+                filterValue = document.querySelector('#categorySelect').value.toLowerCase();
+                if (filterValue === '') {
+                    profiles.forEach(profile => {
+                        profile.style.display = 'none';
+                    });
+                } else {
+                    profiles.forEach(profile => {
+                        const categoryText = profile.querySelector('.category').textContent.toLowerCase();
+                        if (categoryText === filterValue) {
+                            profile.style.display = 'flex';
+                            anyVisible = true;
+                        } else {
+                            profile.style.display = 'none';
+                        }
+                    });
+                }
+            }
+            else if (searchType === 'location') {
+                // Filter by Location (dropdown)
+                filterValue = document.querySelector('#locationSelect').value.toLowerCase();
+                if (filterValue === '') {
+                    profiles.forEach(profile => {
+                        profile.style.display = 'none';
+                    });
+                } else {
+                    profiles.forEach(profile => {
+                        const locationText = profile.querySelector('.location').textContent.toLowerCase();
+                        if (locationText === filterValue) {
+                            profile.style.display = 'flex';
+                            anyVisible = true;
+                        } else {
+                            profile.style.display = 'none';
+                        }
+                    });
+                }
+            }
+            else if (searchType === 'all') {
+                // Show all profiles
+                profiles.forEach(profile => {
+                    profile.style.display = 'flex';
+                    anyVisible = true;
+                });
+            }
+
+            document.querySelector('#noResultsMessage').style.display = anyVisible ? 'none' : 'block';
+        }
+
+        function loadProfiles() {
+            const jsonInput = document.querySelector('#jsonInput').value;
+            const csvInput = document.querySelector('#csvInput').value.split('|');
+            let profiles;
+
+            try {
+                profiles = JSON.parse(jsonInput).profiles;
+            } catch (e) {
+                alert('Invalid JSON format');
+                return;
+            }
+
+            profiles.forEach((profile, index) => {
+                // Make sure we have a valid profile element by ID and a corresponding CSV entry
+                const profileElement = document.querySelector(`#profile${profile.id}`);
+                if (profileElement && csvInput[profile.id - 1]) {
+                    profileElement.querySelector('img').src = csvInput[profile.id - 1];
+                    profileElement.querySelector('.name').textContent = profile.name || '';
+                    profileElement.querySelector('.category').textContent = profile.category || '';
+                    profileElement.querySelector('.location').textContent = profile.location || '';
+                    // Display the profile
+                    profileElement.style.display = 'flex';
+                }
+            });
+        }
+
+        // Function to send profile id and search input/selected value to Thunkable Web Viewer
+        function sendProfileIdToThunkable(profileElement) {
+            const profileId = profileElement.getAttribute('data-id');
+            ThunkableWebviewerExtension.postMessage(profileId.toString());
+
+            // Send current value of search input or selected category/location to Thunkable, 
+            // with first char as '<' and include searchType
+            const searchType = document.querySelector('input[name="searchType"]:checked').value;
+            let searchValue = '';
+
+            if (searchType === 'expert') {
+                searchValue = document.querySelector('#searchInput').value;
+            } else if (searchType === 'category') {
+                const categorySelect = document.querySelector('#categorySelect');
+                searchValue = categorySelect.options[categorySelect.selectedIndex].text;
+            } else if (searchType === 'location') {
+                const locationSelect = document.querySelector('#locationSelect');
+                searchValue = locationSelect.options[locationSelect.selectedIndex].text;
+            } else if (searchType === 'all') {
+                // For "all", we can just send 'All' or an empty string
+                searchValue = 'All';
+            }
+
+            ThunkableWebviewerExtension.postMessage('<' + searchType + ':' + searchValue);
+        }
+
+        // Handle messages from Thunkable Web Viewer Extension
+        ThunkableWebviewerExtension.receiveMessage(function(message) {
+            if (message.startsWith('%')) {
+                // Assuming JSON data starts with %
+                document.querySelector('#jsonInput').value = message.substring(1);
+                loadProfiles();
+            } 
+            else if (message.startsWith('#')) {
+                // Assuming CSV data starts with #
+                document.querySelector('#csvInput').value = message.substring(1);
+                loadProfiles();
+            } 
+            else if (message.startsWith('<')) {
+                // Message is the search input value with searchType
+                const content = message.substring(1); // Remove '<'
+                const separatorIndex = content.indexOf(':');
+                const newSearchType = content.substring(0, separatorIndex);
+                const searchValue = content.substring(separatorIndex + 1);
+
+                // Set the searchType radio button
+                const searchTypeRadio = document.querySelector(`input[name="searchType"][value="${newSearchType}"]`);
+                if (searchTypeRadio) {
+                    searchTypeRadio.checked = true;
+                    toggleSearchType();
+                }
+
+                // Set the search input / categorySelect / locationSelect value
+                if (newSearchType === 'expert') {
+                    document.querySelector('#searchInput').value = searchValue;
+                } 
+                else if (newSearchType === 'category') {
+                    const categorySelect = document.querySelector('#categorySelect');
+                    for (let i = 0; i < categorySelect.options.length; i++) {
+                        if (categorySelect.options[i].text === searchValue) {
+                            categorySelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+                else if (newSearchType === 'location') {
+                    const locationSelect = document.querySelector('#locationSelect');
+                    for (let i = 0; i < locationSelect.options.length; i++) {
+                        if (locationSelect.options[i].text === searchValue) {
+                            locationSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+                else if (newSearchType === 'all') {
+                    // For "all", no actual input to set
+                }
+
+                filterProfiles();
+            }
+        });
+    </script>
+    <!-- Cloudflare analytics scripts (optional) -->
+    <script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015"
+            integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ=="
+            data-cf-beacon='{"rayId":"8f6e1e50395b551c","serverTiming":{"name":{"cfExtPri":true,"cfL4":true,"cfSpeedBrain":true,"cfCacheStatus":true}},"version":"2024.10.5","token":"ef0548ffc9904e66b75bcd9134981ca0"}'
+            crossorigin="anonymous">
+    </script>
+    <script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015"
+            integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ=="
+            data-cf-beacon='{"rayId":"8fa77410df1c54cc","serverTiming":{"name":{"cfExtPri":true,"cfL4":true,"cfSpeedBrain":true,"cfCacheStatus":true}},"version":"2024.10.5","token":"ef0548ffc9904e66b75bcd9134981ca0"}'
+            crossorigin="anonymous">
+    </script>
+</body>
+</html>
