@@ -384,30 +384,45 @@
         }
 
         function loadProfiles() {
-            const jsonInput = document.querySelector('#jsonInput').value;
-            const csvInput = document.querySelector('#csvInput').value.split('|');
-            let profiles;
+    // 1) grab & parse
+    let profiles;
+    try {
+      profiles = JSON.parse(
+        document.getElementById('jsonInput').value
+      ).profiles;
+    } catch (e) {
+      alert('Invalid JSON format');
+      return;
+    }
+    // CSV is just pipe-separated URLs
+    const csvArr = document.getElementById('csvInput')
+                       .value
+                       .split('|');
 
-            try {
-                profiles = JSON.parse(jsonInput).profiles;
-            } catch (e) {
-                alert('Invalid JSON format');
-                return;
-            }
+    // 2) loop & update
+    profiles.forEach(profile => {
+      const el = document.getElementById(`profile${profile.id}`);
+      if (!el) return;
 
-            profiles.forEach((profile, index) => {
-                // Make sure we have a valid profile element by ID and a corresponding CSV entry
-                const profileElement = document.querySelector(`#profile${profile.id}`);
-                if (profileElement && csvInput[profile.id - 1]) {
-                    profileElement.querySelector('img').src = csvInput[profile.id - 1];
-                    profileElement.querySelector('.name').textContent = profile.name || '';
-                    profileElement.querySelector('.category').textContent = profile.category || '';
-                    profileElement.querySelector('.location').textContent = profile.location || '';
-                    // Display the profile
-                    profileElement.style.display = 'flex';
-                }
-            });
-        }
+      // → ALWAYS set text fields
+      el.querySelector('.name').textContent     = profile.name     || '';
+      el.querySelector('.category').textContent = profile.category || '';
+      el.querySelector('.location').textContent = profile.location || '';
+
+      // → ONLY set the image if you actually have a URL
+      const imgUrl = csvArr[profile.id - 1];
+      if (imgUrl) {
+        el.querySelector('img').src = imgUrl;
+      }
+
+      // → SHOW it (you might already be hiding/show-showing in filterProfiles,
+      //    but at least this makes sure the JSON ones do appear)
+      el.style.display = 'flex';
+    });
+
+    // 3) re-apply whatever filter is currently active
+    filterProfiles();
+  }
 
         // Function to send profile id and search input/selected value to Thunkable Web Viewer
         function sendProfileIdToThunkable(profileElement) {
